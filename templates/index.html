@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Nexus AI - Futuristic Chat Interface</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700&family=Rajdhani:wght@300;400;500;600&display=swap" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
     <style>
         :root {
             --primary: #00ff9d;
@@ -233,7 +232,6 @@
 
         .ai-message {
             align-self: flex-start;
-            background-color: rgba(0, 184, 255, 0.1);
             border-left: 3px solid var(--secondary);
             color: var(--text);
         }
@@ -408,24 +406,24 @@
         <div class="terminal-body" id="chat-container">
             <div class="welcome-message">
                 <div class="typewriter">
-                    <span class="prompt">&gt;</span> Initializing Nexus AI interface...<br>
-                    <span class="prompt">&gt;</span> System check complete.<br>
-                    <span class="prompt">&gt;</span> Gemini API connection established.<br>
-                    <span class="prompt">&gt;</span> Ready for user input.
+                    <span class="prompt">></span> Initializing Nexus AI interface...<br>
+                    <span class="prompt">></span> System check complete.<br>
+                    <span class="prompt">></span> Gemini API connection established.<br>
+                    <span class="prompt">></span> Ready for user input.
                 </div>
             </div>
             <div id="chat-messages"></div>
         </div>
         
         <div class="terminal-input">
-            <span class="prompt">&gt;</span>
+            <span class="prompt">></span>
             <input type="text" id="user-input" autocomplete="off" placeholder="Type your query here...">
             <button id="send-button">SEND</button>
         </div>
         
         <div class="terminal-footer">
             <div class="footer-item">CONNECTION: SECURE</div>
-            <div class="footer-item">LATENCY: <span id="latency">12ms</span></div>
+            <div class="footer-item">STATUS: ONLINE</div>
             <div class="footer-item">MODE: INTERACTIVE</div>
         </div>
     </div>
@@ -435,55 +433,50 @@
             // Create glowing dots for background
             createGlowingDots();
             
-            // Connect to Socket.IO
-            const socket = io();
-            
             // DOM elements
             const userInput = document.getElementById('user-input');
             const sendButton = document.getElementById('send-button');
             const chatMessages = document.getElementById('chat-messages');
             const chatContainer = document.getElementById('chat-container');
-            const latencyDisplay = document.getElementById('latency');
-            
-            // Variables for latency calculation
-            let pingTime;
-            
-            // Test latency periodically
-            setInterval(() => {
-                pingTime = Date.now();
-                socket.emit('ping');
-            }, 5000);
-            
-            // Handle latency response
-            socket.on('pong', () => {
-                const latency = Date.now() - pingTime;
-                latencyDisplay.textContent = `${latency}ms`;
-                
-                // Change color based on latency
-                if (latency < 50) {
-                    latencyDisplay.style.color = '#00ff9d';
-                } else if (latency < 150) {
-                    latencyDisplay.style.color = '#ffbd2e';
-                } else {
-                    latencyDisplay.style.color = '#ff5f56';
-                }
-            });
             
             // Handle sending messages
-            function sendMessage() {
+            async function sendMessage() {
                 const message = userInput.value.trim();
-                if (message) {
-                    // Add user message to chat
-                    addMessage(message, 'user');
+                if (!message) return;
+                
+                // Add user message to chat
+                addMessage(message, 'user');
+                
+                // Clear input
+                userInput.value = '';
+                
+                // Show typing indicator
+                showTypingIndicator();
+                
+                try {
+                    // Send message to server via POST
+                    const response = await fetch('/chat', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ message })
+                    });
                     
-                    // Emit message to server
-                    socket.emit('send_message', { message: message });
+                    const data = await response.json();
                     
-                    // Clear input
-                    userInput.value = '';
+                    // Remove typing indicator
+                    removeTypingIndicator();
                     
-                    // Show typing indicator
-                    showTypingIndicator();
+                    if (data.error) {
+                        addMessage(`SYSTEM ERROR: ${data.error}`, 'ai');
+                    } else {
+                        // Add AI response to chat
+                        addMessage(data.ai_message, 'ai');
+                    }
+                } catch (error) {
+                    removeTypingIndicator();
+                    addMessage(`SYSTEM ERROR: ${error.message}`, 'ai');
                 }
             }
             
@@ -495,21 +488,6 @@
                 if (e.key === 'Enter') {
                     sendMessage();
                 }
-            });
-            
-            // Receive messages from server
-            socket.on('receive_message', function(data) {
-                // Remove typing indicator
-                removeTypingIndicator();
-                
-                // Add AI response to chat
-                addMessage(data.ai_message, 'ai');
-            });
-            
-            // Handle errors
-            socket.on('error', function(data) {
-                removeTypingIndicator();
-                addMessage(`SYSTEM ERROR: ${data.message}`, 'ai');
             });
             
             // Add a new message to the chat
