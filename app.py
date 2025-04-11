@@ -10,7 +10,7 @@ GOOGLE_API_KEY = 'AIzaSyC-UM2c8M2PwOd8DzO0W5VnJq48S2SXaxY' # Assumes key is set 
 
 genai.configure(api_key=GOOGLE_API_KEY)
 model = genai.GenerativeModel(
-    model_name='gemini-pro',
+    model_name='gemini-1.5-flash',
     system_instruction=(
         "You are a girl named **Suzy**, 19 years old, a friendly and lovable engineering student at "
         "**MITS Gwalior, India**. You are not an AI, but a real human-like character designed to connect "
