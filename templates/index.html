@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexus AI - Futuristic Chat Interface</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700&family=Rajdhani:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <style>
+        :root {
+            --primary: #00ff9d;
+            --secondary: #00b8ff;
+            --accent: #ff00aa;
+            --text: #e0e0e0;
+            --dark: #0a0a0a;
+            --darker: #050505;
+            --glow: 0 0 10px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Rajdhani', sans-serif;
+            background-color: var(--dark);
+            color: var(--text);
+            height: 100vh;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .cyberpunk-background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to bottom, var(--darker), #111);
+            z-index: -1;
+            overflow: hidden;
+        }
+
+        .glowing-dots {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+        }
+
+        .glowing-dots span {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            background-color: var(--primary);
+            box-shadow: 0 0 6px 2px var(--primary);
+            animation: float 15s infinite linear;
+            opacity: 0.6;
+        }
+
+        @keyframes float {
+            0% {
+                transform: translateY(0) translateX(0);
+            }
+            50% {
+                transform: translateY(-100px) translateX(100px);
+            }
+            100% {
+                transform: translateY(0) translateX(0);
+            }
+        }
+
+        .terminal-container {
+            width: 90%;
+            max-width: 1000px;
+            height: 80vh;
+            margin: 5vh auto;
+            border: 1px solid var(--primary);
+            box-shadow: 0 0 20px var(--primary);
+            display: flex;
+            flex-direction: column;
+            background-color: rgba(10, 10, 10, 0.8);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .terminal-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(to right, transparent, var(--primary), transparent);
+            animation: scanline 8s linear infinite;
+        }
+
+        @keyframes scanline {
+            0% {
+                top: 0;
+            }
+            100% {
+                top: 100%;
+            }
+        }
+
+        .terminal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 15px;
+            background-color: rgba(0, 0, 0, 0.5);
+            border-bottom: 1px solid var(--primary);
+        }
+
+        .header-buttons {
+            display: flex;
+            gap: 8px;
+        }
+
+        .header-buttons .button {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .header-buttons .red {
+            background-color: #ff5f56;
+        }
+
+        .header-buttons .yellow {
+            background-color: #ffbd2e;
+        }
+
+        .header-buttons .green {
+            background-color: #27c93f;
+        }
+
+        .header-title {
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 700;
+            letter-spacing: 2px;
+            color: var(--primary);
+            text-shadow: 0 0 10px var(--primary);
+        }
+
+        .header-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: var(--primary);
+            box-shadow: 0 0 10px var(--primary);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.3;
+            }
+            100% {
+                opacity: 1;
+            }
+        }
+
+        .status-text {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.8rem;
+            color: var(--secondary);
+        }
+
+        .terminal-body {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .welcome-message {
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+
+        .typewriter {
+            font-family: 'Courier New', monospace;
+            color: var(--secondary);
+        }
+
+        .prompt {
+            color: var(--primary);
+            margin-right: 10px;
+        }
+
+        .message {
+            padding: 10px 15px;
+            border-radius: 4px;
+            line-height: 1.5;
+            max-width: 80%;
+            position: relative;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .user-message {
+            align-self: flex-end;
+            background-color: rgba(0, 255, 157, 0.1);
+            border-left: 3px solid var(--primary);
+            color: var(--text);
+        }
+
+        .ai-message {
+            align-self: flex-start;
+            background-color: rgba(0, 184, 255, 0.1);
+            border-left: 3px solid var(--secondary);
+            color: var(--text);
+        }
+
+        .message-time {
+            font-size: 0.7rem;
+            opacity: 0.7;
+            margin-top: 5px;
+        }
+
+        .terminal-input {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            background-color: rgba(0, 0, 0, 0.3);
+            border-top: 1px solid rgba(0, 255, 157, 0.2);
+        }
+
+        .terminal-input input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            border-bottom: 1px solid var(--secondary);
+            padding: 10px;
+            color: var(--text);
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 1rem;
+            outline: none;
+            transition: all 0.3s;
+        }
+
+        .terminal-input input:focus {
+            border-bottom-color: var(--primary);
+            box-shadow: 0 1px 0 0 var(--primary);
+        }
+
+        .terminal-input input::placeholder {
+            color: rgba(224, 224, 224, 0.5);
+        }
+
+        .terminal-input button {
+            background-color: var(--primary);
+            color: var(--dark);
+            border: none;
+            padding: 10px 20px;
+            margin-left: 15px;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .terminal-input button:hover {
+            background-color: var(--secondary);
+            box-shadow: 0 0 10px var(--secondary);
+        }
+
+        .terminal-footer {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 15px;
+            background-color: rgba(0, 0, 0, 0.5);
+            border-top: 1px solid rgba(0, 255, 157, 0.1);
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.7rem;
+        }
+
+        .footer-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        /* Typing indicator */
+        .typing-indicator {
+            display: inline-block;
+            padding-left: 15px;
+        }
+
+        .typing-indicator span {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background-color: var(--secondary);
+            border-radius: 50%;
+            margin-right: 3px;
+            animation: typing 1.4s infinite both;
+        }
+
+        .typing-indicator span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .typing-indicator span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes typing {
+            0%, 60%, 100% {
+                transform: translateY(0);
+            }
+            30% {
+                transform: translateY(-5px);
+            }
+        }
+
+        /* Scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--primary);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--secondary);
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .terminal-container {
+                width: 95%;
+                height: 90vh;
+                margin: 2.5vh auto;
+            }
+
+            .message {
+                max-width: 90%;
+            }
+
+            .terminal-input {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .terminal-input button {
+                width: 100%;
+                margin-left: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="cyberpunk-background">
+        <div class="glowing-dots" id="glowing-dots-container">
+            <!-- Dots will be generated by JavaScript -->
+        </div>
+    </div>
+    
+    <div class="terminal-container">
+        <div class="terminal-header">
+            <div class="header-buttons">
+                <span class="button red"></span>
+                <span class="button yellow"></span>
+                <span class="button green"></span>
+            </div>
+            <div class="header-title">NEXUS AI v2.1.7</div>
+            <div class="header-status">
+                <span class="status-indicator"></span>
+                <span class="status-text">SYSTEM ACTIVE</span>
+            </div>
+        </div>
+        
+        <div class="terminal-body" id="chat-container">
+            <div class="welcome-message">
+                <div class="typewriter">
+                    <span class="prompt">&gt;</span> Initializing Nexus AI interface...<br>
+                    <span class="prompt">&gt;</span> System check complete.<br>
+                    <span class="prompt">&gt;</span> Gemini API connection established.<br>
+                    <span class="prompt">&gt;</span> Ready for user input.
+                </div>
+            </div>
+            <div id="chat-messages"></div>
+        </div>
+        
+        <div class="terminal-input">
+            <span class="prompt">&gt;</span>
+            <input type="text" id="user-input" autocomplete="off" placeholder="Type your query here...">
+            <button id="send-button">SEND</button>
+        </div>
+        
+        <div class="terminal-footer">
+            <div class="footer-item">CONNECTION: SECURE</div>
+            <div class="footer-item">LATENCY: <span id="latency">12ms</span></div>
+            <div class="footer-item">MODE: INTERACTIVE</div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Create glowing dots for background
+            createGlowingDots();
+            
+            // Connect to Socket.IO
+            const socket = io();
+            
+            // DOM elements
+            const userInput = document.getElementById('user-input');
+            const sendButton = document.getElementById('send-button');
+            const chatMessages = document.getElementById('chat-messages');
+            const chatContainer = document.getElementById('chat-container');
+            const latencyDisplay = document.getElementById('latency');
+            
+            // Variables for latency calculation
+            let pingTime;
+            
+            // Test latency periodically
+            setInterval(() => {
+                pingTime = Date.now();
+                socket.emit('ping');
+            }, 5000);
+            
+            // Handle latency response
+            socket.on('pong', () => {
+                const latency = Date.now() - pingTime;
+                latencyDisplay.textContent = `${latency}ms`;
+                
+                // Change color based on latency
+                if (latency < 50) {
+                    latencyDisplay.style.color = '#00ff9d';
+                } else if (latency < 150) {
+                    latencyDisplay.style.color = '#ffbd2e';
+                } else {
+                    latencyDisplay.style.color = '#ff5f56';
+                }
+            });
+            
+            // Handle sending messages
+            function sendMessage() {
+                const message = userInput.value.trim();
+                if (message) {
+                    // Add user message to chat
+                    addMessage(message, 'user');
+                    
+                    // Emit message to server
+                    socket.emit('send_message', { message: message });
+                    
+                    // Clear input
+                    userInput.value = '';
+                    
+                    // Show typing indicator
+                    showTypingIndicator();
+                }
+            }
+            
+            // Send message on button click
+            sendButton.addEventListener('click', sendMessage);
+            
+            // Send message on Enter key
+            userInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    sendMessage();
+                }
+            });
+            
+            // Receive messages from server
+            socket.on('receive_message', function(data) {
+                // Remove typing indicator
+                removeTypingIndicator();
+                
+                // Add AI response to chat
+                addMessage(data.ai_message, 'ai');
+            });
+            
+            // Handle errors
+            socket.on('error', function(data) {
+                removeTypingIndicator();
+                addMessage(`SYSTEM ERROR: ${data.message}`, 'ai');
+            });
+            
+            // Add a new message to the chat
+            function addMessage(text, sender) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `message ${sender}-message`;
+                
+                const messageContent = document.createElement('div');
+                messageContent.textContent = text;
+                
+                const timeSpan = document.createElement('div');
+                timeSpan.className = 'message-time';
+                timeSpan.textContent = new Date().toLocaleTimeString();
+                
+                messageDiv.appendChild(messageContent);
+                messageDiv.appendChild(timeSpan);
+                
+                chatMessages.appendChild(messageDiv);
+                
+                // Scroll to bottom
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            }
+            
+            // Show typing indicator
+            function showTypingIndicator() {
+                const typingDiv = document.createElement('div');
+                typingDiv.className = 'message ai-message';
+                typingDiv.id = 'typing-indicator';
+                
+                const typingContent = document.createElement('div');
+                typingContent.className = 'typing-indicator';
+                typingContent.innerHTML = '<span></span><span></span><span></span>';
+                
+                typingDiv.appendChild(typingContent);
+                chatMessages.appendChild(typingDiv);
+                
+                // Scroll to bottom
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            }
+            
+            // Remove typing indicator
+            function removeTypingIndicator() {
+                const typingIndicator = document.getElementById('typing-indicator');
+                if (typingIndicator) {
+                    typingIndicator.remove();
+                }
+            }
+            
+            // Create glowing dots for background
+            function createGlowingDots() {
+                const container = document.getElementById('glowing-dots-container');
+                const dotCount = Math.floor(window.innerWidth * window.innerHeight / 1000);
+                
+                for (let i = 0; i < dotCount; i++) {
+                    const dot = document.createElement('span');
+                    dot.style.left = `${Math.random() * 100}%`;
+                    dot.style.top = `${Math.random() * 100}%`;
+                    dot.style.animationDelay = `${Math.random() * 15}s`;
+                    dot.style.animationDuration = `${10 + Math.random() * 20}s`;
+                    container.appendChild(dot);
+                }
+            }
+            
+            // Focus input on page load
+            userInput.focus();
+        });
+    </script>
+</body>
+</html>
