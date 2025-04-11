@@ -5,7 +5,9 @@ import google.generativeai as genai
 app = Flask(__name__)
 
 # Configure Gemini API
+
 GOOGLE_API_KEY = 'AIzaSyC-UM2c8M2PwOd8DzO0W5VnJq48S2SXaxY' # Assumes key is set in environment
+
 genai.configure(api_key=GOOGLE_API_KEY)
 model = genai.GenerativeModel(
     model_name='gemini-pro',
@@ -44,4 +46,6 @@ def chat():
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
+
     app.run(debug=True, host='0.0.0.0', port=5000)
+
